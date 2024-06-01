@@ -35,6 +35,68 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+    const reviewsCollection = client.db('studyHiveDB').collection('reviews')
+    const userCollection = client.db('studyHiveDB').collection('users')
+
+
+
+    app.post('/jwt', async(req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1hr'})
+      res.send({token})
+    })
+
+    //middleware verify token
+    const verifyToken = (req, res, next) => {
+      // console.log('inside verify token', req.headers.authorization)
+      if(!req.headers.authorization){
+        return res.status(401).send({message: 'unauthorized access'})
+      }
+      const token = req.headers.authorization.split(' ')[1]
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded)=>{
+        if(err){
+          return res.status(401).send({message: 'unauthorized access'})
+        }
+        req.decoded = decoded;
+        next();
+      })
+    }
+
+    const verifyAdmin = async(req, res, next) => {
+      const email = req.decoded.email;
+      const query = {email: email}
+      const user = await userCollection.findOne(query)
+      const isAdmin = user?.role === "admin"
+      if(!isAdmin){
+        res.status(403).send({message: 'forbidden access'})
+      }
+      next()
+    }
+
+    app.get('/users', verifyToken, async(req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result)
+    })
+
+    app.post('/users', async(req, res) => {
+      const user = req.body;
+      const query = {email: user.email}
+      const isExist = await userCollection.findOne(query)
+      if(isExist){
+        return res.send({insertedId: null})
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result)
+    })
+
+    // review api
+    app.get('/reviews', async(req, res) => {
+      const result = await reviewsCollection.find().toArray()
+      res.send(result)
+  })
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
