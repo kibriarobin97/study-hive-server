@@ -38,6 +38,7 @@ async function run() {
 
     const reviewsCollection = client.db('studyHiveDB').collection('reviews')
     const userCollection = client.db('studyHiveDB').collection('users')
+    const classesCollection = client.db('studyHiveDB').collection('classes')
 
 
 
@@ -94,6 +95,13 @@ async function run() {
     app.get('/reviews', async(req, res) => {
       const result = await reviewsCollection.find().toArray()
       res.send(result)
+  })
+
+  // class api
+  app.post('/classes', async(req, res) => {
+    const classData = req.body;
+    const result = await classesCollection.insertOne(classData)
+    res.send(result)
   })
 
 
