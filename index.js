@@ -104,6 +104,16 @@ async function run() {
     res.send(result)
   })
 
+  app.get('/classes/:email', verifyToken, async(req, res) => {
+    const email = req.params.email;
+    const query = {teacher_email: email}
+    if(email !== req.decoded.email){
+      return res.status(403).send({message: 'forbidden access'})
+    }
+    const result = await classesCollection.find(query).toArray()
+    res.send(result)
+  })
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
