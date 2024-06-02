@@ -64,18 +64,18 @@ async function run() {
       })
     }
 
-    const verifyAdmin = async(req, res, next) => {
-      const email = req.decoded.email;
-      const query = {email: email}
-      const user = await userCollection.findOne(query)
-      const isAdmin = user?.role === "admin"
-      if(!isAdmin){
-        res.status(403).send({message: 'forbidden access'})
-      }
-      next()
-    }
+    // const verifyAdmin = async(req, res, next) => {
+    //   const email = req.decoded.email;
+    //   const query = {email: email}
+    //   const user = await userCollection.findOne(query)
+    //   const isAdmin = user?.role === "admin"
+    //   if(!isAdmin){
+    //     res.status(403).send({message: 'forbidden access'})
+    //   }
+    //   next()
+    // }
 
-    app.get('/users', verifyToken, async(req, res) => {
+    app.get('/users', async(req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result)
     })
@@ -109,12 +109,19 @@ async function run() {
     res.send(result)
   })
 
+  app.get('/classes/:id', async(req, res) => {
+    const id = req.params.id
+    const query = { _id: new ObjectId(id) }
+    const result = await classesCollection.findOne(query)
+    res.send(result)
+  })
+
   app.get('/my-classes/:email', verifyToken, async(req, res) => {
     const email = req.params.email;
     const query = {teacher_email: email}
-    // if(email !== req.decoded.email){
-    //   return res.status(403).send({message: 'forbidden access'})
-    // }
+    if(email !== req.decoded.email){
+      return res.status(403).send({message: 'forbidden access'})
+    }
     const result = await classesCollection.find(query).toArray()
     res.send(result)
   })
