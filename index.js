@@ -104,6 +104,11 @@ async function run() {
     res.send(result)
   })
 
+  app.get('/all-classes', async(req, res) => {
+    const result = await classesCollection.find().toArray()
+    res.send(result)
+  })
+
   app.get('/my-classes/:email', verifyToken, async(req, res) => {
     const email = req.params.email;
     const query = {teacher_email: email}
