@@ -75,19 +75,40 @@ async function run() {
     //   next()
     // }
 
+
+    // users api
     app.get('/users', async(req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result)
     })
 
-    app.post('/users', async(req, res) => {
-      const user = req.body;
-      const query = {email: user.email}
+    // app.post('/users', async(req, res) => {
+    //   const user = req.body;
+    //   const query = {email: user.email}
+    //   const isExist = await userCollection.findOne(query)
+    //   if(isExist){
+    //     return res.send({insertedId: null})
+    //   }
+    //   const result = await userCollection.insertOne(user);
+    //   res.send(result)
+    // })
+
+    app.put('/user', async (req, res) => {
+      const user = req.body
+      const query = { email: user?.email }
       const isExist = await userCollection.findOne(query)
-      if(isExist){
-        return res.send({insertedId: null})
+      if (isExist) {
+        return res.send(isExist)
       }
-      const result = await userCollection.insertOne(user);
+
+      // save user for the first time
+      const options = { upsert: true }
+      const updateDoc = {
+        $set: {
+          ...user
+        },
+      }
+      const result = await userCollection.updateOne(query, updateDoc, options)
       res.send(result)
     })
 
