@@ -39,6 +39,7 @@ async function run() {
     const reviewsCollection = client.db('studyHiveDB').collection('reviews')
     const userCollection = client.db('studyHiveDB').collection('users')
     const classesCollection = client.db('studyHiveDB').collection('classes')
+    const applyTeachCollection = client.db('studyHiveDB').collection('applyTeach')
 
 
 
@@ -151,6 +152,13 @@ async function run() {
     const id = req.params.id;
     const query = {_id: new ObjectId(id)}
     const result = await classesCollection.deleteOne(query)
+    res.send(result)
+  })
+
+  // apply teach api
+  app.post('/apply-teach', async(req, res) => {
+    const teacherData = req.body;
+    const result = await applyTeachCollection.insertOne(teacherData)
     res.send(result)
   })
 
