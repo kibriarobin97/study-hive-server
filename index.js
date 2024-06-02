@@ -83,25 +83,31 @@ async function run() {
       res.send(result)
     })
 
-    // app.post('/users', async(req, res) => {
-    //   const user = req.body;
-    //   const query = {email: user.email}
-    //   const isExist = await userCollection.findOne(query)
-    //   if(isExist){
-    //     return res.send({insertedId: null})
-    //   }
-    //   const result = await userCollection.insertOne(user);
-    //   res.send(result)
-    // })
+    app.get('/user/:email', async(req, res) => {
+      const email = req.params.email;
+      const query = {email: email}
+      const result = await userCollection.findOne(query)
+      res.send(result)
+    })
 
     app.put('/user', async (req, res) => {
       const user = req.body
       const query = { email: user?.email }
       const isExist = await userCollection.findOne(query)
       if (isExist) {
-        return res.send(isExist)
+        if (user.status === 'Pending') {
+          const options = { upsert: true }
+          const updateDoc = {
+            $set: {
+              ...user
+            },
+          }
+          const result = await userCollection.updateOne(query, updateDoc, options)
+          return res.send(result)
+        } else {
+          return res.send(isExist)
+        }
       }
-
       // save user for the first time
       const options = { upsert: true }
       const updateDoc = {
