@@ -157,8 +157,9 @@ async function run() {
       res.send(result)
     })
 
-    app.patch('/apply-teach/:id', verifyToken, async(req, res) => {
+    app.patch('/apply-teach/:id/:teacherEmail', verifyToken, async(req, res) => {
       const id = req.params.id;
+      const email = req.params.teacherEmail;
       const filter = {_id: new ObjectId(id)}
       const updatedDoc = {
         $set: {
@@ -167,11 +168,22 @@ async function run() {
         }
       }
       const result = await applyTeachCollection.updateOne(filter, updatedDoc)
-      res.send(result)
+
+      const query = {email: email}
+      const updatedRole = {
+        $set: {
+          role: 'Teacher',
+          status: 'Accepted'
+        }
+      }
+      const userRole = await userCollection.updateOne(query, updatedRole)
+
+      res.send({result, userRole})
     })
 
-    app.patch('/reject-teach/:id', verifyToken, async(req, res) => {
+    app.patch('/reject-teach/:id/:teacherEmail', verifyToken, async(req, res) => {
       const id = req.params.id;
+      const email = req.params.teacherEmail;
       const filter = {_id: new ObjectId(id)}
       const updatedDoc = {
         $set: {
@@ -179,7 +191,15 @@ async function run() {
         }
       }
       const result = await applyTeachCollection.updateOne(filter, updatedDoc)
-      res.send(result)
+      const query = {email: email}
+      const updatedRole = {
+        $set: {
+          status: 'Rejected'
+        }
+      }
+      const userRole = await userCollection.updateOne(query, updatedRole)
+
+      res.send({result, userRole})
     })
 
     // review api
