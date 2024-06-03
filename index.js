@@ -95,18 +95,7 @@ async function run() {
       const query = { email: user?.email }
       const isExist = await userCollection.findOne(query)
       if (isExist) {
-        if (user.status === 'Pending') {
-          const options = { upsert: true }
-          const updateDoc = {
-            $set: {
-              ...user
-            },
-          }
-          const result = await userCollection.updateOne(query, updateDoc, options)
-          return res.send(result)
-        } else {
-          return res.send(isExist)
-        }
+        return res.send(isExist) 
       }
       // save user for the first time
       const options = { upsert: true }
@@ -139,6 +128,12 @@ async function run() {
     })
 
     // apply for teacher
+    app.post('/apply-teach', async(req, res) => {
+      const teacherData = req.body;
+      const result = await applyTeachCollection.insertOne(teacherData)
+      res.send(result)
+    })
+
     app.put('/apply-teach',verifyToken, async(req, res) => {
       const user = req.body;
       const query = { email: user?.email }
@@ -215,6 +210,11 @@ async function run() {
     res.send(result)
   })
 
+  app.get('/all-classes/accepted', async(req, res) => {
+    const result = await classesCollection.find({status: 'Accepted'}).toArray()
+    res.send(result)
+  })
+
   app.get('/all-classes', async(req, res) => {
     const result = await classesCollection.find().toArray()
     res.send(result)
@@ -244,12 +244,32 @@ async function run() {
     res.send(result)
   })
 
-  // apply teach api
-  app.post('/apply-teach', async(req, res) => {
-    const teacherData = req.body;
-    const result = await applyTeachCollection.insertOne(teacherData)
+  app.patch('/classes-accept/:id', async (req, res) => {
+    const id = req.params.id;
+    const filter = {_id: new ObjectId(id)}
+    const updatedDoc = {
+      $set: {
+        status: 'Accepted'
+      }
+    }
+    const result = await classesCollection.updateOne(filter, updatedDoc)
     res.send(result)
   })
+
+  app.patch('/classes-reject/:id', async (req, res) => {
+    const id = req.params.id;
+    const filter = {_id: new ObjectId(id)}
+    const updatedDoc = {
+      $set: {
+        status: 'Rejected'
+      }
+    }
+    const result = await classesCollection.updateOne(filter, updatedDoc)
+    res.send(result)
+  })
+
+  // apply teach api
+  
 
 
     // Send a ping to confirm a successful connection
