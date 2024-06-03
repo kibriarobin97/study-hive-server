@@ -138,6 +138,50 @@ async function run() {
       res.send(result)
     })
 
+    // apply for teacher
+    app.put('/apply-teach',verifyToken, async(req, res) => {
+      const user = req.body;
+      const query = { email: user?.email }
+      const options = {upsert: true}
+      const updateDoc = {
+        $set: {
+          ...user
+        },
+      }
+      const result = await applyTeachCollection.updateOne(query, updateDoc, options)
+      res.send(result)
+    })
+
+    app.get('/apply-teach', async(req, res) => {
+      const result = await applyTeachCollection.find().toArray()
+      res.send(result)
+    })
+
+    app.patch('/apply-teach/:id', verifyToken, async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $set: {
+          role: 'Teacher',
+          status: 'Accepted'
+        }
+      }
+      const result = await applyTeachCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    })
+
+    app.patch('/reject-teach/:id', verifyToken, async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $set: {
+          status: 'Rejected'
+        }
+      }
+      const result = await applyTeachCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    })
+
     // review api
     app.get('/reviews', async(req, res) => {
       const result = await reviewsCollection.find().toArray()
