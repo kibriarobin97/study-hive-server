@@ -288,10 +288,10 @@ async function run() {
     res.send(result)
   })
 
-  app.get('/teacher-stat/:classId', async(req, res) => {
-    const id = req.params.classId;
-    const query = {classId: id}
-    const enrollClass = await enrollClassCollection.find(query).toArray()
+  app.get('/teacher-stat/:id', async(req, res) => {
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)}
+    const enrollClass = await classesCollection.findOne(query)
     res.send(enrollClass)
   })
 
