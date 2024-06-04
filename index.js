@@ -288,6 +288,13 @@ async function run() {
     res.send(result)
   })
 
+  app.get('/teacher-stat/:classId', async(req, res) => {
+    const id = req.params.classId;
+    const query = {classId: id}
+    const enrollClass = await enrollClassCollection.find(query).toArray()
+    res.send(enrollClass)
+  })
+
   // payment api
   app.post('/create-payment-intent', async(req, res) => {
     const {price} = req.body;
@@ -305,10 +312,18 @@ async function run() {
   })
   
   // enroll class api
-  app.post('/enroll-class', async(req, res) => {
+  app.put('/enroll-class/:id', async(req, res) => {
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)}
     const enrollData = req.body;
     const result = await enrollClassCollection.insertOne(enrollData)
-    res.send(result)
+    const updatedDoc = {
+      $inc: {
+        enrolment: +1
+      }
+    }
+    const updateResult = await classesCollection.updateOne(query, updatedDoc)
+    res.send({result, updateResult})
   })
 
   app.get('/my-enroll-class/:email', async(req, res) => {
