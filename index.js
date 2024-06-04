@@ -3,6 +3,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRETE_KEY);
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -40,6 +41,7 @@ async function run() {
     const userCollection = client.db('studyHiveDB').collection('users')
     const classesCollection = client.db('studyHiveDB').collection('classes')
     const applyTeachCollection = client.db('studyHiveDB').collection('applyTeach')
+    const enrollClassCollection = client.db('studyHiveDB').collection('enrollClass')
 
 
 
@@ -51,7 +53,6 @@ async function run() {
 
     //middleware verify token
     const verifyToken = (req, res, next) => {
-      // console.log('inside verify token', req.headers.authorization)
       if(!req.headers.authorization){
         return res.status(401).send({message: 'unauthorized access'})
       }
@@ -65,17 +66,16 @@ async function run() {
       })
     }
 
-    // const verifyAdmin = async(req, res, next) => {
-    //   const email = req.decoded.email;
-    //   const query = {email: email}
-    //   const user = await userCollection.findOne(query)
-    //   const isAdmin = user?.role === "admin"
-    //   if(!isAdmin){
-    //     res.status(403).send({message: 'forbidden access'})
-    //   }
-    //   next()
-    // }
-
+    const verifyAdmin = async(req, res, next) => {
+      const email = req.decoded.email;
+      const query = {email: email}
+      const user = await userCollection.findOne(query)
+      const isAdmin = user?.role === "admin"
+      if(!isAdmin){
+        res.status(403).send({message: 'forbidden access'})
+      }
+      next()
+    }
 
     // users api
     app.get('/users', async(req, res) => {
@@ -288,8 +288,28 @@ async function run() {
     res.send(result)
   })
 
-  // apply teach api
+  // payment api
+  app.post('/create-payment-intent', async(req, res) => {
+    const {price} = req.body;
+    const amount = parseInt(price * 100)
+    console.log(amount)
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: "usd",
+      payment_method_types: ['card']
+    })
+
+    res.send({
+      clientSecret: paymentIntent.client_secret
+    })
+  })
   
+  // enroll class api
+  app.post('/enroll-class', async(req, res) => {
+    const enrollData = req.body;
+    const result = await enrollClassCollection.insertOne(enrollData)
+    res.send(result)
+  })
 
 
     // Send a ping to confirm a successful connection
