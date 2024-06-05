@@ -208,6 +208,13 @@ async function run() {
     res.send(result)
   })
 
+  app.get('/review/:classId', async(req, res) => {
+    const id = req.params.classId;
+    const query = {classId: id}
+    const result = await reviewsCollection.find(query).toArray()
+    res.send(result)
+  })
+
   // classes api
   app.post('/classes', async(req, res) => {
     const classData = req.body;
