@@ -334,10 +334,22 @@ async function run() {
   })
 
   app.get('/enroll-class', async(req, res) => {
-    const cursor = enrollClassCollection.find().limit(5)
+    const cursor = enrollClassCollection.find().limit(6)
     const result = await cursor.toArray()
     res.send(result)
-})
+  })
+
+  // public stat api
+  app.get('/public-stat', async(req, res) => {
+    const totalUsers = await userCollection.estimatedDocumentCount()
+    const totalEnroll = await enrollClassCollection.estimatedDocumentCount()
+    const totalClasses = await classesCollection.estimatedDocumentCount()
+    res.send({
+      totalUsers,
+      totalEnroll,
+      totalClasses
+    })
+  })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
