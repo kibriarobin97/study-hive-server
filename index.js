@@ -45,162 +45,167 @@ async function run() {
 
 
 
-    app.post('/jwt', async(req, res) => {
-      const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1hr'})
-      res.send({token})
-    })
+  app.post('/jwt', async(req, res) => {
+    const user = req.body;
+    const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1hr'})
+    res.send({token})
+  })
 
     //middleware verify token
-    const verifyToken = (req, res, next) => {
-      if(!req.headers.authorization){
+  const verifyToken = (req, res, next) => {
+    if(!req.headers.authorization){
+      return res.status(401).send({message: 'unauthorized access'})
+    }
+    const token = req.headers.authorization.split(' ')[1]
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded)=>{
+      if(err){
         return res.status(401).send({message: 'unauthorized access'})
-      }
-      const token = req.headers.authorization.split(' ')[1]
-      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded)=>{
-        if(err){
-          return res.status(401).send({message: 'unauthorized access'})
-        }
-        req.decoded = decoded;
-        next();
-      })
     }
+      req.decoded = decoded;
+      next();
+    })
+  }
 
-    const verifyAdmin = async(req, res, next) => {
-      const email = req.decoded.email;
-      const query = {email: email}
-      const user = await userCollection.findOne(query)
-      const isAdmin = user?.role === "admin"
-      if(!isAdmin){
-        res.status(403).send({message: 'forbidden access'})
-      }
-      next()
+  const verifyAdmin = async(req, res, next) => {
+    const email = req.decoded.email;
+    const query = {email: email}
+    const user = await userCollection.findOne(query)
+    const isAdmin = user?.role === "admin"
+    if(!isAdmin){
+      res.status(403).send({message: 'forbidden access'})
     }
+    next()
+  }
 
-    // users api
-    app.get('/users', async(req, res) => {
-      const result = await userCollection.find().toArray();
-      res.send(result)
-    })
+  // users api
+  app.get('/users', async(req, res) => {
+    const result = await userCollection.find().toArray();
+    res.send(result)
+  })
 
-    app.get('/user/:email', async(req, res) => {
-      const email = req.params.email;
-      const query = {email: email}
-      const result = await userCollection.findOne(query)
-      res.send(result)
-    })
+  app.get('/user/:email', async(req, res) => {
+    const email = req.params.email;
+    const query = {email: email}
+    const result = await userCollection.findOne(query)
+    res.send(result)
+  })
 
-    app.put('/user', async (req, res) => {
-      const user = req.body
-      const query = { email: user?.email }
-      const isExist = await userCollection.findOne(query)
-      if (isExist) {
-        return res.send(isExist) 
+  app.put('/user', async (req, res) => {
+    const user = req.body
+    const query = { email: user?.email }
+    const isExist = await userCollection.findOne(query)
+    if (isExist) {
+      return res.send(isExist) 
+    }
+    // save user for the first time
+    const options = { upsert: true }
+    const updateDoc = {
+      $set: {
+        ...user
+      },
+    }
+    const result = await userCollection.updateOne(query, updateDoc, options)
+    res.send(result)
+  })
+
+  app.patch('/users/admin/:id', verifyToken, async(req, res) => {
+    const id = req.params.id;
+    const filter = {_id: new ObjectId(id)}
+    const updatedDoc = {
+      $set: {
+        role: 'Admin'
       }
-      // save user for the first time
-      const options = { upsert: true }
-      const updateDoc = {
-        $set: {
-          ...user
-        },
+    }
+    const result = await userCollection.updateOne(filter, updatedDoc)
+    res.send(result)
+  })
+
+  app.delete('/users/:id', verifyToken, async(req, res) => {
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)}
+    const result = await userCollection.deleteOne(query)
+    res.send(result)
+  })
+
+  // apply for teacher
+  app.post('/apply-teach', async(req, res) => {
+    const teacherData = req.body;
+    const result = await applyTeachCollection.insertOne(teacherData)
+    res.send(result)
+  })
+
+  app.put('/apply-teach',verifyToken, async(req, res) => {
+    const user = req.body;
+    const query = { email: user?.email }
+    const options = {upsert: true}
+    const updateDoc = {
+      $set: {
+        ...user
+      },
+    }
+    const result = await applyTeachCollection.updateOne(query, updateDoc, options)
+    res.send(result)
+  })
+
+  app.get('/apply-teach', async(req, res) => {
+    const result = await applyTeachCollection.find().toArray()
+    res.send(result)
+  })
+
+  app.patch('/apply-teach/:id/:teacherEmail', verifyToken, async(req, res) => {
+    const id = req.params.id;
+    const email = req.params.teacherEmail;
+    const filter = {_id: new ObjectId(id)}
+    const updatedDoc = {
+      $set: {
+        role: 'Teacher',
+        status: 'Accepted'
       }
-      const result = await userCollection.updateOne(query, updateDoc, options)
-      res.send(result)
-    })
+    }
+    const result = await applyTeachCollection.updateOne(filter, updatedDoc)
 
-    app.patch('/users/admin/:id', verifyToken, async(req, res) => {
-      const id = req.params.id;
-      const filter = {_id: new ObjectId(id)}
-      const updatedDoc = {
-        $set: {
-          role: 'Admin'
-        }
+    const query = {email: email}
+    const updatedRole = {
+      $set: {
+        role: 'Teacher',
+        status: 'Accepted'
       }
-      const result = await userCollection.updateOne(filter, updatedDoc)
-      res.send(result)
-    })
+    }
+    const userRole = await userCollection.updateOne(query, updatedRole)
 
-    app.delete('/users/:id', verifyToken, async(req, res) => {
-      const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const result = await userCollection.deleteOne(query)
-      res.send(result)
-    })
+    res.send({result, userRole})
+  })
 
-    // apply for teacher
-    app.post('/apply-teach', async(req, res) => {
-      const teacherData = req.body;
-      const result = await applyTeachCollection.insertOne(teacherData)
-      res.send(result)
-    })
-
-    app.put('/apply-teach',verifyToken, async(req, res) => {
-      const user = req.body;
-      const query = { email: user?.email }
-      const options = {upsert: true}
-      const updateDoc = {
-        $set: {
-          ...user
-        },
+  app.patch('/reject-teach/:id/:teacherEmail', verifyToken, async(req, res) => {
+    const id = req.params.id;
+    const email = req.params.teacherEmail;
+    const filter = {_id: new ObjectId(id)}
+    const updatedDoc = {
+      $set: {
+        status: 'Rejected'
       }
-      const result = await applyTeachCollection.updateOne(query, updateDoc, options)
-      res.send(result)
-    })
-
-    app.get('/apply-teach', async(req, res) => {
-      const result = await applyTeachCollection.find().toArray()
-      res.send(result)
-    })
-
-    app.patch('/apply-teach/:id/:teacherEmail', verifyToken, async(req, res) => {
-      const id = req.params.id;
-      const email = req.params.teacherEmail;
-      const filter = {_id: new ObjectId(id)}
-      const updatedDoc = {
-        $set: {
-          role: 'Teacher',
-          status: 'Accepted'
-        }
+    }
+    const result = await applyTeachCollection.updateOne(filter, updatedDoc)
+    const query = {email: email}
+    const updatedRole = {
+      $set: {
+        status: 'Rejected'
       }
-      const result = await applyTeachCollection.updateOne(filter, updatedDoc)
+    }
+    const userRole = await userCollection.updateOne(query, updatedRole)
+    res.send({result, userRole})
+  })
 
-      const query = {email: email}
-      const updatedRole = {
-        $set: {
-          role: 'Teacher',
-          status: 'Accepted'
-        }
-      }
-      const userRole = await userCollection.updateOne(query, updatedRole)
-
-      res.send({result, userRole})
-    })
-
-    app.patch('/reject-teach/:id/:teacherEmail', verifyToken, async(req, res) => {
-      const id = req.params.id;
-      const email = req.params.teacherEmail;
-      const filter = {_id: new ObjectId(id)}
-      const updatedDoc = {
-        $set: {
-          status: 'Rejected'
-        }
-      }
-      const result = await applyTeachCollection.updateOne(filter, updatedDoc)
-      const query = {email: email}
-      const updatedRole = {
-        $set: {
-          status: 'Rejected'
-        }
-      }
-      const userRole = await userCollection.updateOne(query, updatedRole)
-
-      res.send({result, userRole})
-    })
-
-    // review api
-    app.get('/reviews', async(req, res) => {
+  // review api
+  app.get('/reviews', async(req, res) => {
       const result = await reviewsCollection.find().toArray()
       res.send(result)
+  })
+
+  app.post('/review', async(req, res) => {
+    const reviewData = req.body;
+    const result = await reviewsCollection.insertOne(reviewData)
+    res.send(result)
   })
 
   // classes api
@@ -336,6 +341,13 @@ async function run() {
   app.get('/enroll-class', async(req, res) => {
     const cursor = enrollClassCollection.find().limit(6)
     const result = await cursor.toArray()
+    res.send(result)
+  })
+
+  app.get('/enroll-class/:id', async(req, res) => {
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)}
+    const result = await enrollClassCollection.findOne(query)
     res.send(result)
   })
 
