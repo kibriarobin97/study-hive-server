@@ -66,24 +66,43 @@ async function run() {
     })
   }
 
+  // verify admin
   const verifyAdmin = async(req, res, next) => {
     const email = req.decoded.email;
     const query = {email: email}
     const user = await userCollection.findOne(query)
-    const isAdmin = user?.role === "admin"
+    const isAdmin = user?.role === "Admin"
     if(!isAdmin){
       res.status(403).send({message: 'forbidden access'})
     }
     next()
   }
 
+  // verify teacher
+  const verifyTeacher = async (req, res, next) => {
+    const user = req.decoded
+    const query = { email: user?.email }
+    const result = await userCollection.findOne(query)
+    console.log({result})
+    if (!result || result?.role !== 'Teacher') {
+      return res.status(401).send({ message: 'unauthorized access!!' })
+    }
+
+    next()
+  }
+
   // users api
-  app.get('/users', async(req, res) => {
+  app.get('/users',verifyToken, async(req, res) => {
     const result = await userCollection.find().toArray();
     res.send(result)
   })
 
-  app.get('/user/:email', async(req, res) => {
+  app.get('/users-admin',verifyToken, verifyAdmin, async(req, res) => {
+    const result = await userCollection.find().toArray();
+    res.send(result)
+  })
+
+  app.get('/user/:email',verifyToken, async(req, res) => {
     const email = req.params.email;
     const query = {email: email}
     const result = await userCollection.findOne(query)
@@ -108,7 +127,7 @@ async function run() {
     res.send(result)
   })
 
-  app.patch('/users/admin/:id', verifyToken, async(req, res) => {
+  app.patch('/users/admin/:id', verifyToken, verifyAdmin, async(req, res) => {
     const id = req.params.id;
     const filter = {_id: new ObjectId(id)}
     const updatedDoc = {
@@ -120,7 +139,7 @@ async function run() {
     res.send(result)
   })
 
-  app.delete('/users/:id', verifyToken, async(req, res) => {
+  app.delete('/users/:id', verifyToken, verifyAdmin, async(req, res) => {
     const id = req.params.id;
     const query = {_id: new ObjectId(id)}
     const result = await userCollection.deleteOne(query)
@@ -128,7 +147,7 @@ async function run() {
   })
 
   // apply for teacher
-  app.post('/apply-teach', async(req, res) => {
+  app.post('/apply-teach',verifyToken, async(req, res) => {
     const teacherData = req.body;
     const result = await applyTeachCollection.insertOne(teacherData)
     res.send(result)
@@ -147,12 +166,12 @@ async function run() {
     res.send(result)
   })
 
-  app.get('/apply-teach', async(req, res) => {
+  app.get('/apply-teach',verifyToken, verifyAdmin, async(req, res) => {
     const result = await applyTeachCollection.find().toArray()
     res.send(result)
   })
 
-  app.patch('/apply-teach/:id/:teacherEmail', verifyToken, async(req, res) => {
+  app.patch('/apply-teach/:id/:teacherEmail', verifyToken, verifyAdmin, async(req, res) => {
     const id = req.params.id;
     const email = req.params.teacherEmail;
     const filter = {_id: new ObjectId(id)}
@@ -176,7 +195,7 @@ async function run() {
     res.send({result, userRole})
   })
 
-  app.patch('/reject-teach/:id/:teacherEmail', verifyToken, async(req, res) => {
+  app.patch('/reject-teach/:id/:teacherEmail', verifyToken,verifyAdmin, async(req, res) => {
     const id = req.params.id;
     const email = req.params.teacherEmail;
     const filter = {_id: new ObjectId(id)}
@@ -202,13 +221,13 @@ async function run() {
       res.send(result)
   })
 
-  app.post('/review', async(req, res) => {
+  app.post('/review',verifyToken, async(req, res) => {
     const reviewData = req.body;
     const result = await reviewsCollection.insertOne(reviewData)
     res.send(result)
   })
 
-  app.get('/review/:classId', async(req, res) => {
+  app.get('/review/:classId',verifyToken, verifyAdmin, async(req, res) => {
     const id = req.params.classId;
     const query = {classId: id}
     const result = await reviewsCollection.find(query).toArray()
@@ -216,7 +235,7 @@ async function run() {
   })
 
   // classes api
-  app.post('/classes', async(req, res) => {
+  app.post('/classes',verifyToken, verifyTeacher, async(req, res) => {
     const classData = req.body;
     const result = await classesCollection.insertOne(classData)
     res.send(result)
@@ -227,26 +246,26 @@ async function run() {
     res.send(result)
   })
 
-  app.get('/all-classes', async(req, res) => {
+  app.get('/all-classes',verifyToken, verifyAdmin, async(req, res) => {
     const result = await classesCollection.find().toArray()
     res.send(result)
   })
 
-  app.get('/classes/:id', async(req, res) => {
+  app.get('/classes/:id',verifyToken, async(req, res) => {
     const id = req.params.id
     const query = { _id: new ObjectId(id) }
     const result = await classesCollection.findOne(query)
     res.send(result)
   })
 
-  app.get('/classes-update/:id', async(req, res) => {
+  app.get('/classes-update/:id',verifyToken, verifyTeacher, async(req, res) => {
     const id = req.params.id
     const query = { _id: new ObjectId(id) }
     const result = await classesCollection.findOne(query)
     res.send(result)
   })
 
-  app.patch('/update-classes/:id', verifyToken, async(req, res) => {
+  app.patch('/update-classes/:id', verifyToken, verifyTeacher, async(req, res) => {
     const id = req.params.id;
     const classesData = req.body;
     const query = {_id: new ObjectId(id)}
@@ -259,7 +278,7 @@ async function run() {
     res.send(result)
   })
 
-  app.get('/my-classes/:email', verifyToken, async(req, res) => {
+  app.get('/my-classes/:email', verifyToken,verifyTeacher, async(req, res) => {
     const email = req.params.email;
     const query = {teacher_email: email}
     if(email !== req.decoded.email){
@@ -269,14 +288,14 @@ async function run() {
     res.send(result)
   })
 
-  app.delete('/my-classes/:id', async(req, res) => {
+  app.delete('/my-classes/:id',verifyToken, verifyTeacher, async(req, res) => {
     const id = req.params.id;
     const query = {_id: new ObjectId(id)}
     const result = await classesCollection.deleteOne(query)
     res.send(result)
   })
 
-  app.patch('/classes-accept/:id', async (req, res) => {
+  app.patch('/classes-accept/:id',verifyToken, verifyAdmin, async (req, res) => {
     const id = req.params.id;
     const filter = {_id: new ObjectId(id)}
     const updatedDoc = {
@@ -288,7 +307,7 @@ async function run() {
     res.send(result)
   })
 
-  app.patch('/classes-reject/:id', async (req, res) => {
+  app.patch('/classes-reject/:id',verifyToken, verifyAdmin, async (req, res) => {
     const id = req.params.id;
     const filter = {_id: new ObjectId(id)}
     const updatedDoc = {
@@ -300,7 +319,7 @@ async function run() {
     res.send(result)
   })
 
-  app.get('/teacher-stat/:id', async(req, res) => {
+  app.get('/teacher-stat/:id',verifyToken, verifyTeacher, async(req, res) => {
     const id = req.params.id;
     const query = {_id: new ObjectId(id)}
     const enrollClass = await classesCollection.findOne(query)
@@ -308,7 +327,7 @@ async function run() {
   })
 
   // payment api
-  app.post('/create-payment-intent', async(req, res) => {
+  app.post('/create-payment-intent',verifyToken, async(req, res) => {
     const {price} = req.body;
     const amount = parseInt(price * 100)
     console.log(amount)
@@ -324,7 +343,7 @@ async function run() {
   })
   
   // enroll class api
-  app.put('/enroll-class/:id', async(req, res) => {
+  app.put('/enroll-class/:id',verifyToken, async(req, res) => {
     const id = req.params.id;
     const query = {_id: new ObjectId(id)}
     const enrollData = req.body;
@@ -338,7 +357,7 @@ async function run() {
     res.send({result, updateResult})
   })
 
-  app.get('/my-enroll-class/:email', async(req, res) => {
+  app.get('/my-enroll-class/:email',verifyToken, async(req, res) => {
     const email = req.params.email;
     const query = {email: email}
     const result = await enrollClassCollection.find(query).toArray()
@@ -351,7 +370,7 @@ async function run() {
     res.send(result)
   })
 
-  app.get('/enroll-class/:id', async(req, res) => {
+  app.get('/enroll-class/:id',verifyToken, async(req, res) => {
     const id = req.params.id;
     const query = {_id: new ObjectId(id)}
     const result = await enrollClassCollection.findOne(query)
