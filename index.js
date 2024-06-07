@@ -11,7 +11,10 @@ const port = process.env.PORT || 5000;
 const corsOptions = {
     origin: [
       'http://localhost:5173',
-      'http://localhost:5174'
+      'http://localhost:5174',
+      'https://study-hive-388ef.web.app',
+      'https://study-hive-388ef.firebaseapp.com'
+
     ],
     credentials: true,
     optionSuccessStatus: 200,
@@ -35,13 +38,14 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const reviewsCollection = client.db('studyHiveDB').collection('reviews')
     const userCollection = client.db('studyHiveDB').collection('users')
     const classesCollection = client.db('studyHiveDB').collection('classes')
     const applyTeachCollection = client.db('studyHiveDB').collection('applyTeach')
     const enrollClassCollection = client.db('studyHiveDB').collection('enrollClass')
+    const assignmentCollection = client.db('studyHiveDB').collection('assignment')
 
 
 
@@ -326,6 +330,27 @@ async function run() {
     res.send(enrollClass)
   })
 
+  app.put('/add-assignment/:id',verifyToken, verifyTeacher, async(req, res) => {
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)}
+    const assignmentData = req.body;
+    const result = await assignmentCollection.insertOne(assignmentData)
+    const updatedDoc = {
+      $inc: {
+        assignment: +1
+      }
+    }
+    const updateResult = await classesCollection.updateOne(query, updatedDoc)
+    res.send({result, updateResult})
+  })
+
+  app.get('/assignment/:classId', async(req, res) => {
+    const id = req.params.classId;
+    const query = {classId: id}
+    const result = await assignmentCollection.find(query).toArray()
+    res.send(result)
+  })
+
   // payment api
   app.post('/create-payment-intent',verifyToken, async(req, res) => {
     const {price} = req.body;
@@ -390,7 +415,7 @@ async function run() {
   })
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
