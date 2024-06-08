@@ -46,6 +46,7 @@ async function run() {
     const applyTeachCollection = client.db('studyHiveDB').collection('applyTeach')
     const enrollClassCollection = client.db('studyHiveDB').collection('enrollClass')
     const assignmentCollection = client.db('studyHiveDB').collection('assignment')
+    const submitAssignmentCollection = client.db('studyHiveDB').collection('submitAssignment')
 
 
 
@@ -400,6 +401,21 @@ async function run() {
     const query = {_id: new ObjectId(id)}
     const result = await enrollClassCollection.findOne(query)
     res.send(result)
+  })
+
+  // submit assignment
+  app.put('/submit-assignment/:id',verifyToken, async(req, res) => {
+    const data = req.body;
+    const id = req.params.id
+    const result = await submitAssignmentCollection.insertOne(data)
+    const query = {_id: new ObjectId(id)}
+    const updateDoc = {
+      $set: {
+        status: "Submitted"
+      }
+    }
+    const updateStatus = await assignmentCollection.updateOne(query, updateDoc)
+    res.send({result, updateStatus})
   })
 
   // public stat api
