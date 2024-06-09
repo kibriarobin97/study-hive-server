@@ -418,6 +418,13 @@ async function run() {
     res.send({result, updateStatus})
   })
 
+  app.get('/sub-assignment/:classId', async(req, res) => {
+    const id = req.params.classId;
+    const query = {classId: id}
+    const result = await submitAssignmentCollection.find(query).toArray()
+    res.send(result)
+  })
+
   // public stat api
   app.get('/public-stat', async(req, res) => {
     const totalUsers = await userCollection.estimatedDocumentCount()
