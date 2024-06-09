@@ -418,7 +418,7 @@ async function run() {
     res.send({result, updateStatus})
   })
 
-  app.get('/sub-assignment/:classId', async(req, res) => {
+  app.get('/sub-assignment/:classId',verifyToken, verifyTeacher, async(req, res) => {
     const id = req.params.classId;
     const query = {classId: id}
     const result = await submitAssignmentCollection.find(query).toArray()
